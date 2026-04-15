@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IDCM Monitoring</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<style>
+/* ==========================================================================
+   BASE & VARIABLES
+   ========================================================================== */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root {
+  --bg-page: #f0f2f5; --bg-card: #ffffff; --bg-hover: #f9fafb; --bg-sub: #f3f4f6;
+  --border: #e5e7eb; --text-main: #111827; --text-muted: #4b5563; --text-soft: #94a3b8;
+  --accent: #2563eb; --accent-hover: #1d4ed8; --accent-dim: #eff6ff;
+  --green: #10b981; --green-bg: #dcfce7; --red: #ef4444; --red-bg: #fee2e2;
+  --amber: #f59e0b; --amber-bg: #fef3c7; --cyan: #06b6d4; --purple: #8b5cf6;
+  --radius-lg: 16px; --radius-md: 8px;
+  --shadow-card: 0 4px 6px -1px rgba(0,0,0,0.05);
+  --font-ui: 'Inter', system-ui, sans-serif; --font-mono: 'Roboto Mono', monospace;
+}
+body.dark-mode {
+  --bg-page: #0f172a; --bg-card: #1e293b; --bg-hover: #2dd4bf0a; --bg-sub: #0f172a;
+  --border: #334155; --text-main: #f8fafc; --text-muted: #cbd5e1; --text-soft: #64748b;
+  --accent: #3b82f6; --accent-hover: #2563eb; --accent-dim: rgba(59,130,246,0.15);
+  --green: #34d399; --green-bg: rgba(52,211,153,0.15); --red: #f87171; --red-bg: rgba(248,113,113,0.15);
+  --amber: #fbbf24; --amber-bg: rgba(251,191,36,0.15); --cyan: #22d3ee; --purple: #a78bfa;
+}
+
+html { font-size: 14px; }
+body { background: var(--bg-page); color: var(--text-main); font-family: var(--font-ui); min-height: 100vh; line-height: 1.5; transition: background 0.3s, color 0.3s; padding-bottom: 40px; }
+.bento-container { max-width: 1400px; margin: 0 auto; padding: 24px; display: flex; flex-direction: column; gap: 20px; }
+.bento-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); padding: 20px 24px; transition: 0.3s; }
+.font-mono { font-family: var(--font-mono); }
+.text-muted { color: var(--text-muted); }
+.c-blue { color: var(--accent); } .c-green { color: var(--green); } .c-red { color: var(--red); } .c-amber { color: var(--amber); } .c-cyan { color: var(--cyan); } .c-purple { color: var(--purple); }
+
+/* ==========================================================================
+   NAVIGATION / TABS
+   ========================================================================== */
+.hdr { display: flex; align-items: center; justify-content: space-between; position: sticky; top: 16px; z-index: 100; padding: 12px 24px; }
+.hdr-left { display: flex; align-items: center; gap: 20px; }
+.logo { font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 10px; }
+.logo-icon { background: var(--accent); color: white; width: 32px; height: 32px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; }
+
+.tab-nav { display: flex; gap: 8px; background: var(--bg-sub); padding: 4px; border-radius: 10px; border: 1px solid var(--border); }
+.tab-btn { background: transparent; border: none; padding: 8px 16px; border-radius: 6px; font-family: var(--font-ui); font-size: 13px; font-weight: 600; color: var(--text-muted); cursor: pointer; transition: 0.2s; }
+.tab-btn:hover { color: var(--text-main); }
+.tab-btn.active { background: var(--bg-card); color: var(--accent); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+
+.tab-content { display: none; animation: fadeIn 0.3s ease; flex-direction: column; gap: 20px;}
+.tab-content.active { display: flex; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ==========================================================================
+   BUTTONS & INPUTS
+   ========================================================================== */
+.btn { background: var(--bg-card); border: 1px solid var(--border); color: var(--text-main); font-family: var(--font-ui); font-size: 13px; font-weight: 600; padding: 10px 16px; border-radius: var(--radius-md); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; transition: 0.2s; }
+.btn:hover { background: var(--bg-sub); }
+.btn-primary { background: var(--accent); color: white; border: none; } .btn-primary:hover { background: var(--accent-hover); }
+.btn-excel { background: var(--green); color: white; border: none; } .btn-excel:hover { background: #059669; }
+.btn-danger { background: var(--red-bg); color: var(--red); border: 1px solid rgba(239,68,68,0.2); } .btn-danger:hover { background: var(--red); color: white; }
+
+select, input[type=text], input[type=number] { background: var(--bg-sub); border: 1px solid var(--border); color: var(--text-main); font-family: var(--font-ui); font-size: 13px; padding: 10px 14px; border-radius: var(--radius-md); outline: none; transition: 0.2s; }
+select:focus, input:focus { border-color: var(--accent); background: var(--bg-card); box-shadow: 0 0 0 3px var(--accent-dim); }
+
+/* ==========================================================================
+   TAB 1: DASHBOARD STYLES
+   ========================================================================== */
+.stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+.stat { position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 8px; }
+.stat-lbl { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+.stat-num { font-size: 36px; font-weight: 700; line-height: 1.1; letter-spacing: -1px; }
+.stat-bar-bg { width: 100%; height: 6px; background: var(--bg-sub); border-radius: 4px; overflow: hidden; margin-top: auto;}
+.stat-bar-fill { height: 100%; border-radius: 4px; transition: width 0.8s ease; }
+
+.filter-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+.tbl-scroll { overflow-x: auto; width: 100%; }
+table { width: 100%; border-collapse: collapse; text-align: left; }
+th { background: var(--bg-sub); padding: 14px 16px; font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; border-bottom: 1px solid var(--border); white-space: nowrap; }
+td { padding: 16px; font-size: 13px; border-bottom: 1px solid var(--border); white-space: nowrap; vertical-align: middle;}
+tr:hover td { background: var(--bg-hover); }
+.badge { display: inline-flex; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; }
+.b-ule { background: var(--green-bg); color: var(--green); } .b-utle { background: var(--red-bg); color: var(--red); }
+
+/* ==========================================================================
+   TAB 2: GENERATOR STYLES
+   ========================================================================== */
+.gen-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; }
+.form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
+.input-group { display: flex; flex-direction: column; gap: 6px; }
+.input-group label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
+.result-box { background: var(--bg-sub); border: 1px dashed var(--border); padding: 24px; border-radius: 12px; text-align: center; margin-bottom: 20px; }
+.result-code { font-family: var(--font-mono); font-size: 24px; font-weight: 700; letter-spacing: 2px; margin: 12px 0; word-break: break-all; color: var(--text-main);}
+
+/* ==========================================================================
+   TAB 3: SCANNER STYLES
+   ========================================================================== */
+.scan-wrapper { position: relative; max-width: 600px; margin: 0 auto; width: 100%;}
+.scan-input { width: 100%; padding: 20px; font-family: var(--font-mono); font-size: 20px; font-weight: 600; letter-spacing: 2px; text-align: center; border: 2px dashed var(--text-soft); border-radius: 12px; }
+.status-badge { position: absolute; top: -12px; right: 20px; background: var(--text-muted); color: white; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; text-transform: uppercase; }
+.status-badge.valid { background: var(--green); } .status-badge.invalid { background: var(--red); }
+.visual-code { background: #0f172a; padding: 20px; border-radius: 12px; text-align: center; font-family: var(--font-mono); font-size: 24px; font-weight: 700; letter-spacing: 3px; display: none; margin: 20px auto; max-width: 800px;}
+.result-grid { display: none; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 24px; }
+.result-section { border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+.row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed var(--border); font-size: 13px; }
+.row:last-child { border-bottom: none; }
+
+@media (max-width: 900px) { .gen-grid { grid-template-columns: 1fr; } .result-grid { grid-template-columns: 1fr; } .hdr {flex-direction: column; gap:16px;} .tab-nav {width: 100%; justify-content: space-between;}}
+</style>
+</head>
+<body>
+
+<div class="bento-container">
+
+  <header class="hdr bento-card">
+    <div class="hdr-left">
+      <div class="logo"><div class="logo-icon">BI</div>IDCM</div>
+      <div class="tab-nav">
+        <button class="tab-btn active" onclick="switchTab('dashboard')">📊 Dashboard</button>
+        <button class="tab-btn" onclick="switchTab('generator')">⚙️ Kodifikasi Digit</button>
+        <button class="tab-btn" onclick="switchTab('scanner')">🔍 Pengecekan</button>
+      </div>
+    </div>
+    <div class="hdr-right" style="display: flex; gap: 12px;">
+      <button class="btn" onclick="clearDatabase()" style="font-size:11px;">🗑️ Reset Data</button>
+      <button id="theme-toggle" class="btn">🌙 Dark</button>
+    </div>
+  </header>
+
+  <div id="tab-dashboard" class="tab-content active">
+    
+    <div class="stats-row">
+      <div class="stat bento-card">
+        <div class="stat-lbl">Total Transaksi Tersimpan</div>
+        <div class="stat-num font-mono c-blue" id="s-total">0</div>
+        <div class="stat-bar-bg"><div class="stat-bar-fill" style="background:var(--accent); width:100%"></div></div>
+      </div>
+      <div class="stat bento-card">
+        <div class="stat-lbl">Uang Layak Edar (ULE)</div>
+        <div class="stat-num font-mono c-green" id="s-ule">0</div>
+        <div class="stat-bar-bg"><div class="stat-bar-fill" id="sb-ule" style="background:var(--green);"></div></div>
+      </div>
+      <div class="stat bento-card">
+        <div class="stat-lbl">Tidak Layak Edar (UTLE)</div>
+        <div class="stat-num font-mono c-red" id="s-utle">0</div>
+        <div class="stat-bar-bg"><div class="stat-bar-fill" id="sb-utle" style="background:var(--red);"></div></div>
+      </div>
+    </div>
+
+    <div class="filter-bar bento-card">
+      <select id="f-cabang" onchange="applyF()"><option value="">Semua Satker</option></select>
+      <select id="f-status" onchange="applyF()">
+        <option value="">Semua Status Kelayakan</option>
+        <option value="ULE">ULE (Layak)</option>
+        <option value="UTLE">UTLE (Tidak Layak)</option>
+      </select>
+      <input type="text" id="f-search" placeholder="Cari Kode Master 34-digit..." oninput="applyF()" style="flex:1; min-width: 200px;">
+      
+      <div style="margin-left: auto; display: flex; gap: 8px; border-left: 1px solid var(--border); padding-left: 16px;">
+        <button class="btn btn-excel" onclick="exportExcel()">📤 Ekspor Excel</button>
+        <button class="btn btn-excel" onclick="document.getElementById('import-excel').click()">📥 Bulk Impor Excel</button>
+        <input type="file" id="import-excel" accept=".xlsx, .xls, .csv" style="display:none" onchange="importExcel(event)">
+      </div>
+    </div>
+
+    <div class="bento-card" style="padding: 0; overflow: hidden;">
+      <div style="padding: 20px 24px; border-bottom: 1px solid var(--border); font-weight: 700;">
+        Tabel Database Kas <span id="f-count" style="font-weight: 400; color: var(--text-muted); margin-left: 8px;"></span>
+      </div>
+      <div class="tbl-scroll">
+        <table>
+          <thead>
+            <tr><th>No</th><th>Kode Master (34-Digit)</th><th>Pecahan</th><th>Tahun</th><th>Satker</th><th>Keputusan</th><th>Aksi</th></tr>
+          </thead>
+          <tbody id="tbl-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div id="tab-generator" class="tab-content">
+    <div class="gen-grid">
+      <div class="bento-card">
+        <div style="font-weight: 700; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 10px;">Form Spesifikasi Uang</div>
+        <div class="form-grid" id="form-container">
+          </div>
+      </div>
+      
+      <div class="bento-card" style="display: flex; flex-direction: column;">
+        <div style="font-weight: 700; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 10px;">Preview Kode Master</div>
+        
+        <div class="result-box">
+          <div class="result-code" id="gen-code">0000000000000000000000000000000000</div>
+          <div id="gen-count" style="font-size: 13px; font-weight: 600; color: var(--text-muted);">0 / 34 Digit</div>
+        </div>
+        
+        <button class="btn btn-primary" style="padding: 16px; font-size: 14px;" onclick="saveGeneratedCode()">💾 Simpan ke Database Utama</button>
+        <div style="font-size: 11px; color: var(--text-soft); text-align: center; margin-top: 12px; line-height: 1.4;">
+          Kode otomatis divalidasi. Jika kode sudah ada di database, sistem akan menolaknya (Anti-Duplikasi).
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="tab-scanner" class="tab-content">
+    <div class="bento-card" style="text-align: center; padding: 40px 20px;">
+      <h2 style="margin-bottom: 10px;">Audit & Scanner Kodifikasi</h2>
+      <p style="color: var(--text-muted); margin-bottom: 30px; font-size: 13px;">Tempel (Paste) kode 34-digit di bawah ini. Spasi dan karakter asing akan otomatis dibersihkan.</p>
+      
+      <div class="scan-wrapper">
+        <div class="status-badge" id="scan-status">Menunggu Input</div>
+        <input type="text" class="scan-input" id="scan-input" placeholder="Paste kode di sini..." autocomplete="off">
+      </div>
+
+      <div id="db-status-alert" style="margin-top: 20px; padding: 12px 16px; border-radius: 8px; font-weight: 700; text-align: center; font-size: 13px; display: none; letter-spacing: 0.5px; max-width: 600px; margin-left: auto; margin-right: auto;"></div>
+
+      <div class="visual-code" id="scan-visual">
+        <span style="color:#60a5fa" id="v1"></span><span style="color:#475569">·</span><span style="color:#34d399" id="v2"></span><span style="color:#475569">·</span><span style="color:#22d3ee" id="v3"></span><span style="color:#475569">·</span><span style="color:#fbbf24" id="v4"></span><span style="color:#475569">·</span><span style="color:#a78bfa" id="v5"></span>
+      </div>
+    </div>
+
+    <div class="result-grid" id="scan-result" style="display:none;">
+      <div class="result-section bento-card">
+        <div style="font-weight: 700; color: var(--accent); margin-bottom: 16px; text-transform: uppercase; font-size: 12px;">Segmen 1 & 2: Produk & Kemasan</div>
+        <div class="row"><span class="k">Bahan Uang</span> <span class="v" id="r-bahan"></span></div>
+        <div class="row"><span class="k">Jenis Uang</span> <span class="v" id="r-jenis"></span></div>
+        <div class="row"><span class="k">Pecahan</span> <span class="v font-mono c-amber" id="r-pecahan"></span></div>
+        <div class="row"><span class="k">Tahun Emisi</span> <span class="v font-mono" id="r-tahun"></span></div>
+        <div class="row"><span class="k">Seri Bilyet</span> <span class="v" id="r-bilyet"></span></div>
+        <div class="row"><span class="k">Status Terbit</span> <span class="v" id="r-statusT"></span></div>
+        <div class="row"><span class="k">Bentuk Kemasan</span> <span class="v c-green" id="r-kemasan"></span></div>
+      </div>
+      
+      <div class="result-section bento-card">
+        <div style="font-weight: 700; color: var(--cyan); margin-bottom: 16px; text-transform: uppercase; font-size: 12px;">Segmen 3: Kualitas & Audit</div>
+        <div class="row"><span class="k">Soil Level</span> <span class="v font-mono" id="r-soil"></span></div>
+        <div class="row"><span class="k">Security Feature</span> <span class="v" id="r-security"></span></div>
+        <div class="row"><span class="k">Defect / Cacat</span> <span class="v" id="r-defect"></span></div>
+        <div class="row" style="margin-top:10px; padding-top:10px; border-top: 1px solid var(--border);"><span class="k" style="font-weight:700">Keputusan Akhir</span> <span class="v font-mono" id="r-keputusan" style="font-size:16px;"></span></div>
+      </div>
+
+      <div class="result-section bento-card">
+        <div style="font-weight: 700; color: var(--amber); margin-bottom: 16px; text-transform: uppercase; font-size: 12px;">Segmen 4-6: Pihak & Penyimpanan</div>
+        <div class="row"><span class="k">Kantor Satker</span> <span class="v font-mono" id="r-satker"></span></div>
+        <div class="row"><span class="k">Counterparty</span> <span class="v" id="r-party"></span></div>
+        <div class="row"><span class="k">Khazanah ID</span> <span class="v font-mono" id="r-khazanah"></span></div>
+        <div class="row"><span class="k">Media Simpan</span> <span class="v" id="r-msimpan"></span></div>
+        <div class="row"><span class="k">Media Handling</span> <span class="v font-mono" id="r-mhand"></span></div>
+      </div>
+
+      <div class="result-section bento-card">
+        <div style="font-weight: 700; color: var(--purple); margin-bottom: 16px; text-transform: uppercase; font-size: 12px;">Segmen 7 & 8: Eksekusi</div>
+        <div class="row"><span class="k">Proses Bisnis</span> <span class="v c-purple" id="r-proses"></span></div>
+        <div class="row"><span class="k">Tahapan IVRA</span> <span class="v" id="r-ivra"></span></div>
+        <div class="row"><span class="k">Decision Maker</span> <span class="v font-mono" id="r-dm"></span></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ============================================================
+// 1. GLOBAL MASTER DICTIONARY
+// ============================================================
+const MASTER = {
+  bahan: {'1':'Bahan Uang', '2':'Uang Rupiah', '3':'Uang Komemoratif'},
+  jenis: {'1':'Rupiah Kertas', '2':'Rupiah Logam'},
+  pecahan: {'22':'Rp100.000', '21':'Rp50.000', '20':'Rp20.000', '19':'Rp10.000', '18':'Rp5.000', '17':'Rp2.000', '16':'Rp1.000', '15':'Rp500', '14':'Rp200', '13':'Rp100'},
+  bilyet: {'0':'N/A', '1':'Bilyet A', '2':'Bilyet B', '3':'Bilyet C', '4':'Bilyet D', '5':'Bilyet E', '6':'Uncut 2L', '7':'Uncut 4L', '8':'Uncut 45L', '9':'Uncut 50L'},
+  statusTerbit: {'0':'N/A', '1':'Belum Diterbitkan', '2':'Telah Diterbitkan', '3':'Dicabut', '4':'Tidak Berlaku'},
+  kemasan: {'1':'Dus', '2':'Kantong', '3':'Box', '4':'Palet', '5':'Karung', '6':'Banded', '7':'Pack', '8':'Lainnya'},
+  security: {'001':'Asli', '002':'Diragukan', '003':'Palsu'},
+  defect: {'000':'Aman/Tidak Cacat', '001':'Cacat Cetak', '002':'Cacat Potong', '003':'Tinta Luntur', '004':'Berlubang', '005':'Lainnya'},
+  cabang: {'001':'Jakarta Pusat', '007':'Jakarta Selatan', '012':'Bandung', '019':'Bogor', '025':'Semarang', '031':'Yogyakarta', '038':'Surabaya', '044':'Malang', '056':'Medan', '062':'Palembang', '068':'Pekanbaru', '075':'Makassar', '083':'Manado', '089':'Denpasar', '096':'Mataram', '103':'Pontianak', '110':'Banjarmasin', '118':'Jayapura', '124':'Ambon', '126':'Kupang'},
+  party: {'1':'Bank Umum', '2':'Non-Bank', '3':'Satker Kas Internal', '4':'PERURI', '5':'Masyarakat', '6':'Pihak Ketiga', '7':'Lainnya'},
+  mediaSimpan: {'1':'Rak', '2':'Brankas', '3':'Lemari Besi'},
+  proses: {'0101':'Setoran', '0102':'Tarikan', '0201':'Pemusnahan', '0301':'Pengiriman', '0401':'Sortasi', '0501':'Audit'},
+  ivra: {'1':'Initial Entry', '2':'Verification', '3':'Review', '4':'Final'}
+};
+
+function getTahun(idx) { const val = parseInt(idx, 10); return isNaN(val) ? idx : (1960 + val).toString(); }
+function formatCodeVisual(c) { return `<span class="c-blue">${c.slice(0,8)}</span><span class="text-muted">·</span><span class="c-green">${c.slice(8,9)}</span><span class="text-muted">·</span><span class="c-cyan">${c.slice(9,17)}</span><span class="text-muted">·</span><span class="c-amber">${c.slice(17,27)}</span><span class="text-muted">·</span><span class="c-purple">${c.slice(27,34)}</span>`; }
+
+// ============================================================
+// 2. STATE & TAB LOGIC
+// ============================================================
+let RAW = []; 
+let DS = [];
+
+function switchTab(tabId) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-' + tabId).classList.add('active');
+  event.currentTarget.classList.add('active');
+}
+
+function loadData() {
+  const saved = localStorage.getItem('idcm-superapp');
+  if (saved) { try { RAW = JSON.parse(saved); } catch(e) { RAW = []; } }
+  buildDataset();
+}
+function saveData() { localStorage.setItem('idcm-superapp', JSON.stringify(RAW)); buildDataset(); }
+function clearDatabase() { if(confirm("Hapus SELURUH data? Tidak bisa di-undo!")) { RAW = []; saveData(); }}
+
+// ============================================================
+// 3. DASHBOARD LOGIC (Termasuk Pengecekan Duplikat Import)
+// ============================================================
+function deconstructCode(c) {
+  if (typeof c !== 'string' || c.length !== 34) return null;
+  return {
+    bahan: c.slice(0,1), jenis: c.slice(1,2), pecahan: c.slice(2,4), tahunIdx: c.slice(4,6), 
+    bilyet: c.slice(6,7), statusTerbit: c.slice(7,8), kemasan: c.slice(8,9),
+    soil: c.slice(9,11), security: c.slice(11,14), defect: c.slice(14,17),
+    satker: c.slice(17,20), party: c.slice(20,21), khazanah: c.slice(21,24), 
+    mediaSimpan: c.slice(24,25), mediaHand: c.slice(25,27),
+    proses: c.slice(27,31), ivraTahap: c.slice(31,32), decMaker: c.slice(32,34)
+  };
+}
+
+function statusKelayakan(soil, defect) { return (parseInt(soil,10)<=5 && defect==='000') ? 'ULE' : 'UTLE'; }
+
+function buildDataset() {
+  DS = RAW.map((codeStr, i) => {
+    const p = deconstructCode(codeStr);
+    return p ? { id: i, code: codeStr, p: p, st: statusKelayakan(p.soil, p.defect) } : null;
+  }).filter(item => item !== null);
+  
+  // Update Stats
+  const ule = DS.filter(d=>d.st==='ULE').length;
+  document.getElementById('s-total').textContent = DS.length;
+  document.getElementById('s-ule').textContent = ule;
+  document.getElementById('s-utle').textContent = DS.length - ule;
+  
+  if(DS.length > 0) {
+    document.getElementById('sb-ule').style.width = ((ule/DS.length)*100) + '%';
+    document.getElementById('sb-utle').style.width = (((DS.length-ule)/DS.length)*100) + '%';
+  } else {
+    document.getElementById('sb-ule').style.width = '0%'; document.getElementById('sb-utle').style.width = '0%';
+  }
+
+  // Populate filter
+  const sel=document.getElementById('f-cabang'); const curr = sel.value;
+  sel.innerHTML = '<option value="">Semua Satker</option>';
+  [...new Set(DS.map(d=>d.p.satker))].sort().forEach(cb=>{ 
+    const o=document.createElement('option'); o.value=cb; o.textContent=`${cb} — ${MASTER.cabang[cb]||'Unknown'}`; sel.appendChild(o); 
+  });
+  sel.value = curr;
+  
+  applyF();
+}
+
+function renderTable(data) {
+  document.getElementById('f-count').textContent = `(${data.length} Baris)`;
+  const tbody = document.getElementById('tbl-body');
+  if(!data.length){ tbody.innerHTML=`<tr><td colspan="7" style="text-align:center; padding: 40px; color: var(--text-soft)">KOSONG</td></tr>`; return; }
+  
+  tbody.innerHTML = data.map((d,i) => {
+    const stBadge = d.st==='ULE' ? `<span class="badge b-ule">ULE</span>` : `<span class="badge b-utle">UTLE</span>`;
+    return `<tr>
+      <td class="text-muted">${i+1}</td>
+      <td class="font-mono">${formatCodeVisual(d.code)}</td>
+      <td class="font-mono c-amber">${MASTER.pecahan[d.p.pecahan]||d.p.pecahan}</td>
+      <td class="font-mono">${getTahun(d.p.tahunIdx)}</td>
+      <td><span class="font-mono">${d.p.satker}</span> <span style="font-size:11px" class="text-soft">(${MASTER.cabang[d.p.satker]||'?'})</span></td>
+      <td>${stBadge}</td>
+      <td><button class="btn btn-danger" style="padding:4px 8px; font-size:11px" onclick="deleteRecord(${d.id})">Hapus</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function applyF() {
+  const cb=document.getElementById('f-cabang').value; const st=document.getElementById('f-status').value;
+  const q=document.getElementById('f-search').value.toLowerCase().replace(/\s/g,'');
+  const out=DS.filter(d=>{
+    if(cb && d.p.satker!==cb) return false; if(st && d.st!==st) return false;
+    if(q && !d.code.includes(q)) return false;
+    return true;
+  });
+  renderTable(out);
+}
+
+function deleteRecord(idx) { if(confirm("Hapus baris ini?")) { RAW.splice(idx, 1); saveData(); } }
+
+// Excel
+function exportExcel() {
+  if (DS.length === 0) return alert("Kosong.");
+  const ws = XLSX.utils.json_to_sheet(DS.map((d, i) => ({ "No": i+1, "Kode_34_Digit": d.code, "Status": d.st })));
+  const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Data");
+  XLSX.writeFile(wb, `IDCM_Data_${Date.now()}.xlsx`);
+}
+
+function importExcel(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(evt) {
+    const data = new Uint8Array(evt.target.result);
+    const wb = XLSX.read(data, {type: 'array'});
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+    
+    let importedCount = 0;
+    let duplicateCount = 0;
+
+    rows.forEach(r => {
+      const code = r["Kode_34_Digit"] || Object.values(r).find(v => String(v).replace(/[^a-zA-Z0-9]/g, '').length === 34);
+      if (code) { 
+        const c = String(code).replace(/[^a-zA-Z0-9]/g, ''); 
+        if(c.length === 34) {
+          // CEK DUPLIKASI SAAT IMPORT EXCEL
+          if (!RAW.includes(c)) {
+            RAW.unshift(c); // Tambahkan jika unik
+            importedCount++;
+          } else {
+            duplicateCount++; // Hitung yang duplikat
+          }
+        } 
+      }
+    });
+
+    if (importedCount > 0) { 
+      saveData(); 
+      alert(`✅ Berhasil mengimpor ${importedCount} baris baru.\n⚠️ ${duplicateCount} baris diabaikan karena duplikat.`); 
+    } 
+    else { 
+      if (duplicateCount > 0) {
+        alert(`⚠️ Gagal impor: ${duplicateCount} baris yang di-upload sudah ada di database (Duplikat).`);
+      } else {
+        alert("❌ Gagal temukan format 34-digit yang valid di Excel.");
+      }
+    }
+  };
+  reader.readAsArrayBuffer(file); e.target.value = '';
+}
+
+// ============================================================
+// 4. GENERATOR LOGIC (Termasuk Pengecekan Duplikat Input)
+// ============================================================
+const FIELDS = [
+  { id: 'g1', lbl: '1. Bahan Uang (1)', len: 1, type: 'sel', opts: MASTER.bahan },
+  { id: 'g2', lbl: '2. Jenis (1)', len: 1, type: 'sel', opts: MASTER.jenis },
+  { id: 'g3', lbl: '3. Pecahan (2)', len: 2, type: 'sel', opts: MASTER.pecahan },
+  { id: 'g4', lbl: '4. Tahun Emisi (2)', len: 2, type: 'num', ph: 'Misal: 62 (2022)' },
+  { id: 'g5', lbl: '5. Seri Bilyet (1)', len: 1, type: 'sel', opts: MASTER.bilyet },
+  { id: 'g6', lbl: '6. Status Terbit (1)', len: 1, type: 'sel', opts: MASTER.statusTerbit },
+  { id: 'g7', lbl: '7. Kemasan (1)', len: 1, type: 'sel', opts: MASTER.kemasan },
+  { id: 'g8', lbl: '8. Soil Lvl (2)', len: 2, type: 'num', ph: '01 s/d 16' },
+  { id: 'g9', lbl: '9. Security (3)', len: 3, type: 'sel', opts: MASTER.security },
+  { id: 'g10', lbl: '10. Defect (3)', len: 3, type: 'sel', opts: MASTER.defect },
+  { id: 'g11', lbl: '11. Satker (3)', len: 3, type: 'sel', opts: MASTER.cabang },
+  { id: 'g12', lbl: '12. Counterparty (1)', len: 1, type: 'sel', opts: MASTER.party },
+  { id: 'g13', lbl: '13. Khazanah (3)', len: 3, type: 'num', ph: 'Misal: 001' },
+  { id: 'g14', lbl: '14. M. Simpan (1)', len: 1, type: 'sel', opts: MASTER.mediaSimpan },
+  { id: 'g15', lbl: '15. M. Handling (2)', len: 2, type: 'num', ph: 'Misal: 01' },
+  { id: 'g16', lbl: '16. Proses (4)', len: 4, type: 'sel', opts: MASTER.proses },
+  { id: 'g17', lbl: '17. IVRA (1)', len: 1, type: 'sel', opts: MASTER.ivra },
+  { id: 'g18', lbl: '18. Dec. Maker (2)', len: 2, type: 'num', ph: 'Misal: 01' }
+];
+
+function buildGenerator() {
+  const c = document.getElementById('form-container');
+  FIELDS.forEach(f => {
+    const wrap = document.createElement('div'); wrap.className = 'input-group';
+    wrap.innerHTML = `<label>${f.lbl}</label>`;
+    let inp;
+    if (f.type === 'sel') {
+      inp = document.createElement('select');
+      Object.entries(f.opts).forEach(([k,v]) => { inp.innerHTML += `<option value="${k}">${k} - ${v}</option>`; });
+    } else {
+      inp = document.createElement('input'); inp.type = 'text'; inp.placeholder = f.ph; inp.maxLength = f.len;
+      inp.oninput = function() { this.value = this.value.replace(/[^0-9]/g, ''); runGen(); };
+    }
+    inp.id = f.id; inp.onchange = runGen; wrap.appendChild(inp); c.appendChild(wrap);
+  });
+}
+
+function runGen() {
+  let res = '';
+  FIELDS.forEach(f => {
+    let v = document.getElementById(f.id).value || '';
+    if(f.type === 'num') { while(v.length < f.len) v = '0'+v; }
+    res += v;
+  });
+  document.getElementById('gen-code').textContent = res;
+  document.getElementById('gen-count').textContent = `${res.length} / 34 Digit`;
+  document.getElementById('gen-code').style.color = (res.length===34) ? 'var(--green)' : 'var(--text-main)';
+}
+
+function saveGeneratedCode() {
+  const code = document.getElementById('gen-code').textContent;
+  if(code.length !== 34) { alert("Isian Form belum lengkap!"); return; }
+
+  // CEK DUPLIKASI SAAT MENYIMPAN DARI GENERATOR
+  if (RAW.includes(code)) {
+    alert("⚠️ GAGAL MENYIMPAN: Kode ini sudah ada di dalam database utama! (Duplikat)");
+    return;
+  }
+
+  RAW.unshift(code); 
+  saveData(); 
+  alert("✅ Berhasil disimpan ke Database Utama.");
+}
+
+// ============================================================
+// 5. SCANNER LOGIC (WITH DATABASE CROSS-CHECK)
+// ============================================================
+document.getElementById('scan-input').addEventListener('input', function(e) {
+  let val = e.target.value.replace(/[^a-zA-Z0-9]/g, ''); e.target.value = val;
+  const stat = document.getElementById('scan-status');
+  const dbAlert = document.getElementById('db-status-alert');
+
+  if (val.length === 34) {
+    stat.textContent = "Valid 34 Digit"; stat.className = "status-badge valid";
+    processScanner(val);
+  } else {
+    stat.textContent = val.length>0 ? `${val.length}/34 Digit` : "Menunggu Input";
+    stat.className = val.length>0 ? "status-badge invalid" : "status-badge";
+    document.getElementById('scan-result').style.display = 'none'; 
+    document.getElementById('scan-visual').style.display = 'none';
+    dbAlert.style.display = 'none';
+  }
+});
+
+function processScanner(c) {
+  // Tampilkan visual potongan digit
+  document.getElementById('v1').textContent = c.slice(0,8); document.getElementById('v2').textContent = c.slice(8,9);
+  document.getElementById('v3').textContent = c.slice(9,17); document.getElementById('v4').textContent = c.slice(17,27);
+  document.getElementById('v5').textContent = c.slice(27,34);
+  document.getElementById('scan-visual').style.display = 'block'; 
+  document.getElementById('scan-result').style.display = 'grid';
+
+  // LOGIKA CROSS-CHECK DATABASE LOKAL
+  const dbAlert = document.getElementById('db-status-alert');
+  dbAlert.style.display = 'block';
+  
+  if (RAW.includes(c)) {
+    dbAlert.innerHTML = "✅ KODE VALID & TERDAFTAR DI DATABASE LOKAL";
+    dbAlert.style.background = "var(--green-bg)";
+    dbAlert.style.color = "var(--green)";
+    dbAlert.style.border = "1px solid var(--green)";
+  } else {
+    dbAlert.innerHTML = "⚠️ TIDAK TERDAFTAR — BUTUH VERIFIKASI LANJUTAN";
+    dbAlert.style.background = "var(--red-bg)";
+    dbAlert.style.color = "var(--red)";
+    dbAlert.style.border = "1px solid var(--red)";
+  }
+
+  // Bedah makna 34-digit
+  const p = deconstructCode(c);
+  const setV = (id, dict, val) => document.getElementById(id).textContent = `${dict[val]||'Tidak Diketahui'} [${val}]`;
+  
+  setV('r-bahan', MASTER.bahan, p.bahan); setV('r-jenis', MASTER.jenis, p.jenis); setV('r-pecahan', MASTER.pecahan, p.pecahan);
+  document.getElementById('r-tahun').textContent = `${getTahun(p.tahunIdx)} [${p.tahunIdx}]`;
+  setV('r-bilyet', MASTER.bilyet, p.bilyet); setV('r-statusT', MASTER.statusTerbit, p.statusTerbit); setV('r-kemasan', MASTER.kemasan, p.kemasan);
+  
+  document.getElementById('r-soil').textContent = `${parseInt(p.soil)<=5?'Bersih':'Lusuh'} [${p.soil}]`;
+  setV('r-security', MASTER.security, p.security); setV('r-defect', MASTER.defect, p.defect);
+  
+  const isULE = (parseInt(p.soil)<=5 && p.defect==='000');
+  document.getElementById('r-keputusan').textContent = isULE ? "ULE (LAYAK EDAR)" : "UTLE (TIDAK LAYAK)";
+  document.getElementById('r-keputusan').style.color = isULE ? "var(--green)" : "var(--red)";
+
+  setV('r-satker', MASTER.cabang, p.satker); setV('r-party', MASTER.party, p.party);
+  document.getElementById('r-khazanah').textContent = `ID Ruang [${p.khazanah}]`;
+  setV('r-msimpan', MASTER.mediaSimpan, p.mediaSimpan);
+  document.getElementById('r-mhand').textContent = `Metode [${p.mediaHand}]`;
+
+  setV('r-proses', MASTER.proses, p.proses); setV('r-ivra', MASTER.ivra, p.ivraTahap);
+  document.getElementById('r-dm').textContent = `User ID [${p.decMaker}]`;
+}
+
+// ============================================================
+// INIT
+// ============================================================
+const themeBtn = document.getElementById('theme-toggle');
+if (localStorage.getItem('idcm-bento-theme') === 'dark') { document.body.classList.add('dark-mode'); themeBtn.innerHTML = '☀️ Light'; }
+themeBtn.addEventListener('click', () => {
+  document.body.classList.toggle('dark-mode');
+  const isDark = document.body.classList.contains('dark-mode');
+  themeBtn.innerHTML = isDark ? '☀️ Light' : '🌙 Dark';
+  localStorage.setItem('idcm-bento-theme', isDark ? 'dark' : 'light');
+});
+
+buildGenerator();
+runGen();
+loadData();
+</script>
+</body>
+</html>
